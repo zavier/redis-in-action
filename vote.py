@@ -7,15 +7,21 @@ VOTE_SCORE = 432
 # 每页展示文章数
 ARTICLES_PER_PAGE = 25
 
-# 对文章进行投票
-def article_vote(conn, user, article):
+# 对文章进行投赞成、反对票
+def article_vote(conn, user, article, favour=True):
     cutoff = time.time() - ONE_WEEK_IN_SECONDS
     if conn.zscore('time:', article) < cutoff:
         return
     article_id = article.partition(':')[-1]
-    if conn.sadd('voted:' + article_id, user):
-        conn.zincrby('score:', article, VOTE_SCORE)
-        conn.hincrby(article, 'votes', 1)
+    if favour:
+        if conn.sadd('voted:' + article_id, user):
+            conn.zincrby('score:', article, VOTE_SCORE)
+            conn.hincrby(article, 'votes', 1)
+    else:
+        if conn.sadd('disvoted:' + article_id, user):
+            conn.zincrby('score:', article, -VOTE_SCORE)
+            conn.hincrby(article, 'votes', -1)
+
 
 
 # 发布文章
@@ -80,5 +86,6 @@ if __name__ == '__main__':
     #res = get_articles(conn, 1)
     # print(res)
     # add_remove_groups(conn, '2', ['redis'])
-    res = get_group_articles(conn, 'redis', 1)
-    print(res)
+    #res = get_group_articles(conn, 'redis', 1)
+    # print(res)
+    article_vote(conn, 'liu', 'article:2', False)
