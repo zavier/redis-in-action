@@ -52,9 +52,33 @@ def get_articles(conn, page, order='score:'):
         articles.append(article_data)
     return articles
 
+# 对文章进行分组，将文章添加到分组、从分组中删除
+def add_remove_groups(conn, article_id, to_add=[], to_remote=[]):
+    article = 'article:' + article_id
+    for group in to_add:
+        conn.sadd('group:' + group, article)
+    for group in to_remote:
+        conn.srem('group:' + group, article)
+
+
+
+# 对分组进行排序
+def get_group_articles(conn, group, page, order='score:'):
+    key = order + group
+    if not conn.exists(key):
+        conn.zinterstore(key,
+            ['group:' + group, order],
+            aggregate='max')
+        conn.expire(key, 60)
+    return get_articles(conn, page, key)
+
+
 if __name__ == '__main__':
     conn = redis.Redis()
     # post_article(conn, 'zhang', 'redis-in-action-1', 'http://github.com/zavier-1')
     # article_vote(conn, 'zheng', 'article:2')
-    res = get_articles(conn, 1)
+    #res = get_articles(conn, 1)
+    # print(res)
+    # add_remove_groups(conn, '2', ['redis'])
+    res = get_group_articles(conn, 'redis', 1)
     print(res)
